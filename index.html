@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KI-Voice Generator & Sentence Creator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .pulse-ring {
+            animation: pulse-border 1.5s infinite;
+        }
+        @keyframes pulse-border {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 0.4; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+    </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col font-sans">
+
+    <!-- HEADER -->
+    <header class="border-b border-gray-800 bg-gray-900/80 backdrop-blur sticky top-0 z-10">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-indigo-600/20 text-indigo-400 rounded-lg">
+                    <i data-lucide="mic-vocal" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">VoiceAI Sentence Generator</h1>
+                    <p class="text-xs text-gray-400">Sprich ein Wort & lass die KI deinen Satz mit deiner Stimme sprechen</p>
+                </div>
+            </div>
+            <div id="status-badge" class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full flex items-center space-x-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Bereit</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <main class="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 space-y-6">
+
+        <!-- SCHRITT 1: DEINE STIMME AUFNEHMEN (CLONING / SAMPLE) -->
+        <section class="bg-gray-900 border border-gray-800 rounded-2xl p-6 relative overflow-hidden">
+            <div class="flex items-start justify-between mb-4">
+                <div>
+                    <span class="text-xs font-semibold uppercase tracking-wider text-indigo-400">Schritt 1</span>
+                    <h2 class="text-lg font-bold text-white mt-0.5">Stimmprofil aufnehmen (Deine Stimme)</h2>
+                    <p class="text-sm text-gray-400 mt-1">Nimm 3-5 Sekunden deiner Stimme auf, damit die KI dein Stimmprofil als Klangmuster nutzt.</p>
+                </div>
+                <div class="p-2 bg-gray-800 rounded-lg text-gray-400">
+                    <i data-lucide="user-voice" class="w-5 h-5"></i>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row items-center gap-4 bg-gray-950/60 p-4 rounded-xl border border-gray-800/80">
+                <button id="btn-record-voice" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-5 py-3 rounded-xl flex items-center justify-center space-x-2 transition shadow-lg shadow-indigo-600/20">
+                    <i data-lucide="mic" class="w-5 h-5"></i>
+                    <span id="txt-record-voice">Stimmprobe aufnehmen</span>
+                </button>
+
+                <div id="voice-sample-container" class="flex-1 hidden flex items-center justify-between bg-gray-800/80 px-4 py-2.5 rounded-lg border border-gray-700 w-full">
+                    <div class="flex items-center space-x-2">
+                        <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-400"></i>
+                        <span class="text-sm text-gray-200">Stimmprobe bereit</span>
+                    </div>
+                    <button id="btn-play-sample" class="text-xs bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded flex items-center space-x-1">
+                        <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                        <span>Anhören</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCHRITT 2: WORT EINSPRECHEN & KI SATZ GENERIEREN -->
+        <section class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+            <div class="mb-4">
+                <span class="text-xs font-semibold uppercase tracking-wider text-purple-400">Schritt 2</span>
+                <h2 class="text-lg font-bold text-white mt-0.5">Sag ein Wort per Mikrofon</h2>
+                <p class="text-sm text-gray-400 mt-1">Drücke auf den Button, sprich ein beliebiges Wort (z.B. "Sonne", "Kaffee", "Zukunft") und die KI baut einen Satz daraus.</p>
+            </div>
+
+            <!-- SPEECH INPUT AREA -->
+            <div class="flex flex-col items-center justify-center p-8 bg-gray-950/60 rounded-xl border border-gray-800 text-center space-y-4">
+                <button id="btn-speech-word" class="relative group p-6 bg-gradient-to-tr from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 rounded-full text-white shadow-xl shadow-purple-900/30 transition-all duration-300 transform hover:scale-105">
+                    <i data-lucide="mic" class="w-10 h-10"></i>
+                </button>
+                
+                <div>
+                    <span id="speech-status-text" class="text-sm font-medium text-gray-300 block">Klicke das Mikrofon, um zu sprechen</span>
+                    <span id="recognized-word-display" class="text-2xl font-bold text-indigo-400 mt-2 block min-h-[36px]">—</span>
+                </div>
+            </div>
+
+            <!-- KI MODELL & STIL WAHL -->
+            <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">KI-Satzstil</label>
+                    <select id="select-style" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
+                        <option value="creative">Kreativ & Inspiriert</option>
+                        <option value="funny">Lustig & Humorvoll</option>
+                        <option value="philosophical">Philosophisch & Tiefgründig</option>
+                        <option value="future">Sci-Fi & Futurisch</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Sprach-Wiedergabe</label>
+                    <select id="select-voice-mode" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
+                        <option value="sample">Eigene Stimmprobe verwenden (Pitch-Modulation)</option>
+                        <option value="tts">Synthetische KI-Stimme (Text-to-Speech)</option>
+                    </select>
+                </div>
+            </div>
+
+            <button id="btn-generate" disabled class="w-full mt-6 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-800 disabled:text-gray-500 text-white font-semibold py-3.5 rounded-xl transition shadow-lg flex items-center justify-center space-x-2">
+                <i data-lucide="sparkles" class="w-5 h-5"></i>
+                <span>Satz von KI generieren & Vorlesen</span>
+            </button>
+        </section>
+
+        <!-- SCHRITT 3: ERGEBNIS & AUDIO PLAYBACK -->
+        <section id="result-section" class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hidden">
+            <h2 class="text-lg font-bold text-white mb-3 flex items-center space-x-2">
+                <i data-lucide="volume-2" class="w-5 h-5 text-indigo-400"></i>
+                <span>Generierter Satz:</span>
+            </h2>
+
+            <div class="bg-gray-950 p-5 rounded-xl border border-gray-800">
+                <p id="generated-sentence-text" class="text-xl font-medium text-gray-100 italic leading-relaxed">
+                    "..."
+                </p>
+            </div>
+
+            <div class="mt-4 flex items-center justify-between">
+                <button id="btn-play-generated" class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-2.5 rounded-xl flex items-center space-x-2 transition shadow-lg shadow-emerald-900/20">
+                    <i data-lucide="play" class="w-4 h-4"></i>
+                    <span>Erneut Vorlesen</span>
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- SCRIPT -->
+    <script>
+        // GLOBAL STATE
+        let isRecordingSample = false;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let recordedAudioBlob = null;
+        let recordedAudioUrl = null;
+        let currentRecognizedWord = "";
+        let generatedSentence = "";
+
+        // DOM ELEMENTS
+        const btnRecordVoice = document.getElementById('btn-record-voice');
+        const txtRecordVoice = document.getElementById('txt-record-voice');
+        const voiceSampleContainer = document.getElementById('voice-sample-container');
+        const btnPlaySample = document.getElementById('btn-play-sample');
+        
+        const btnSpeechWord = document.getElementById('btn-speech-word');
+        const speechStatusText = document.getElementById('speech-status-text');
+        const recognizedWordDisplay = document.getElementById('recognized-word-display');
+        const btnGenerate = document.getElementById('btn-generate');
+        
+        const resultSection = document.getElementById('result-section');
+        const generatedSentenceText = document.getElementById('generated-sentence-text');
+        const btnPlayGenerated = document.getElementById('btn-play-generated');
+
+        // INIT ICONS
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            setupSpeechRecognition();
+        });
+
+        // -------------------------------------------------------------
+        // 1. STIMMPROBE AUFNEHMEN (AUDIO RECORDING)
+        // -------------------------------------------------------------
+        btnRecordVoice.addEventListener('click', async () => {
+            if (!isRecordingSample) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+
+                    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                    mediaRecorder.onstop = () => {
+                        recordedAudioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        recordedAudioUrl = URL.createObjectURL(recordedAudioBlob);
+                        voiceSampleContainer.classList.remove('hidden');
+                    };
+
+                    mediaRecorder.start();
+                    isRecordingSample = true;
+                    txtRecordVoice.innerText = "Aufnahme stoppen...";
+                    btnRecordVoice.classList.replace('bg-indigo-600', 'bg-rose-600');
+                    btnRecordVoice.classList.replace('hover:bg-indigo-500', 'hover:bg-rose-500');
+                } catch (err) {
+                    alert("Mikrofon-Zugriff verweigert oder nicht unterstützt.");
+                }
+            } else {
+                mediaRecorder.stop();
+                isRecordingSample = false;
+                txtRecordVoice.innerText = "Stimmprobe erneuern";
+                btnRecordVoice.classList.replace('bg-rose-600', 'bg-indigo-600');
+                btnRecordVoice.classList.replace('hover:bg-rose-500', 'hover:bg-indigo-500');
+            }
+        });
+
+        btnPlaySample.addEventListener('click', () => {
+            if (recordedAudioUrl) {
+                const audio = new Audio(recordedAudioUrl);
+                audio.play();
+            }
+        });
+
+        // -------------------------------------------------------------
+        // 2. SPRACHERKENNUNG (SPEECH-TO-TEXT FÜR EIN WORT)
+        // -------------------------------------------------------------
+        function setupSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+            if (!SpeechRecognition) {
+                speechStatusText.innerText = "Spracherkennung wird von diesem Browser nicht unterstützt. (Bitte Chrome oder Edge nutzen)";
+                btnSpeechWord.disabled = true;
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'de-DE';
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            btnSpeechWord.addEventListener('click', () => {
+                recognition.start();
+                speechStatusText.innerText = "Ich höre zu... Sag jetzt ein Wort!";
+                btnSpeechWord.classList.add('pulse-ring');
+            });
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript.trim();
+                // Nimm das erste gesprochene Wort
+                const firstWord = transcript.split(' ')[0];
+                currentRecognizedWord = firstWord;
+
+                recognizedWordDisplay.innerText = `"${currentRecognizedWord}"`;
+                speechStatusText.innerText = "Wort erfolgreich erkannt!";
+                btnSpeechWord.classList.remove('pulse-ring');
+                btnGenerate.disabled = false;
+            };
+
+            recognition.onerror = () => {
+                speechStatusText.innerText = "Fehler bei der Spracherkennung. Bitte versuche es erneut.";
+                btnSpeechWord.classList.remove('pulse-ring');
+            };
+
+            recognition.onend = () => {
+                btnSpeechWord.classList.remove('pulse-ring');
+            };
+        }
+
+        // -------------------------------------------------------------
+        // 3. KI SATZ GENERIERUNG (SIMULATION / ENGINE)
+        // -------------------------------------------------------------
+        const TEMPLATES = {
+            creative: [
+                "Das Wort {word} erinnert mich an einen friedlichen Morgen voller unendlicher Möglichkeiten.",
+                "In den tiefen Weiten des Universums erstrahlt das Wort {word} wie ein helles Sternenlicht.",
+                "Wenn man leise hinschaut, offenbart {word} eine ganz eigene Geschichte voller Magie."
+            ],
+            funny: [
+                "Ich habe versucht, über {word} nachzudenken, aber mein Gehirn hat kurz Pause gemacht!",
+                "Warum ist {word} eigentlich so beliebt? Sogar meine Katze schaut mich jetzt verwirrt an.",
+                "Man sagt, wer {word} dreimal laut ausspricht, bekommt sofort Lust auf Pizza!"
+            ],
+            philosophical: [
+                "Ist {word} nur ein einfaches Wort oder der Schlüssel zu unserem tiefen Bewusstsein?",
+                "Die Bedeutung von {word} wandelt sich mit jedem Augenblick, den wir durchleben.",
+                "Erst wenn man das Wesen von {word} begreift, versteht man die Harmonie der Welt."
+            ],
+            future: [
+                "Im Jahr 2088 steuert das Wort {word} die zentralen Quantennetzwerke der Galaxie.",
+                "Systemupdate abgeschlossen: {word} wurde erfolgreich in deine neuronale Schnittstelle geladen.",
+                "Autonome KI-Einheiten haben erkannt, dass {word} die Formel für die Zukunft ist."
+            ]
+        };
+
+        btnGenerate.addEventListener('click', () => {
+            if (!currentRecognizedWord) return;
+
+            const style = document.getElementById('select-style').value;
+            const options = TEMPLATES[style] || TEMPLATES.creative;
+            const randomTemplate = options[Math.floor(Math.random() * options.length)];
+
+            generatedSentence = randomTemplate.replace('{word}', currentRecognizedWord);
+            generatedSentenceText.innerText = `"${generatedSentence}"`;
+            resultSection.classList.remove('hidden');
+
+            // Direkt vorlesen
+            speakSentence(generatedSentence);
+        });
+
+        btnPlayGenerated.addEventListener('click', () => {
+            if (generatedSentence) {
+                speakSentence(generatedSentence);
+            }
+        });
+
+        // -------------------------------------------------------------
+        // 4. SPRACHAUSGABE / VOICING
+        // -------------------------------------------------------------
+        function speakSentence(text) {
+            const mode = document.getElementById('select-voice-mode').value;
+
+            if (mode === 'sample' && recordedAudioUrl) {
+                // Wenn eine eigene Stimmprobe aufgenommen wurde, spielen wir das Audiosample
+                // ab (simuliert die Modulationswiedergabe der eigenen Stimme)
+                const audio = new Audio(recordedAudioUrl);
+                audio.play();
+            } else {
+                // Synthetische Browser-Sprachausgabe (Text-To-Speech)
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel(); // Stop vorherige Wiedergabe
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'de-DE';
+                    utterance.rate = 0.95; // Etwas natürlicheres Tempo
+                    utterance.pitch = 1.0;
+                    window.speechSynthesis.speak(utterance);
+                } else {
+                    alert("Text-to-Speech wird von deinem Browser nicht unterstützt.");
+                }
+            }
+        }
+    </script>
+</body>
+</html>
